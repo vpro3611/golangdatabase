@@ -5,6 +5,7 @@
 ![Status](https://img.shields.io/badge/status-educational-orange)
 
 A small, self-contained in-memory key-value database with a write-ahead log (WAL) and snapshotting, plus an HTTP backend exposing a minimal authenticated CRUD API. A small Python CLI client demonstrates basic usage.
+This project was built as a learning exercise to explore how a minimal storage engine, query layer, and authenticated HTTP API can be composed together. The focus is on clarity and correctness rather than performance or production readiness.
 
 This repository is intended as an educational / lightweight storage + API stack. It is not a production-grade database — see "Limitations & Drawbacks" sections below.
 
@@ -141,6 +142,8 @@ Public core API (low-level)
 - Close() error — syncs and closes WAL and DB files.
 
 Higher-level DB wrapper
+- The higher-level DB wrapper intentionally avoids schema enforcement and complex data modeling. 
+- Its purpose is to demonstrate how a minimal query layer can be built on top of a simple key-value engine.
 - DB type (database/table_and_schemas.go) provides:
     - Insert() -> InsertQuery: Table(name).Values(map[string]any).Exec() / ExecAndReturnID()
         - Generates auto-increment ID stored in "__Meta__:<table>:next_id" key.
