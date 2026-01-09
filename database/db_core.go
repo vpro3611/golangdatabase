@@ -3,18 +3,19 @@ package database
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
+	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 )
 
 const (
-	databasePath = "./db/database.db"
-	walPath      = "./db/wal.log"
+	DbPath  = "./db/database.db"
+	WalPath = "./db/wal.log"
 
-	walSizeLimit = 10 * 1024 * 1024
+	WalSizeLimit = 10 * 1024 * 1024
 )
 
 type Database struct {
@@ -214,17 +215,30 @@ func ReadRecord(r io.Reader) (*Record, error) {
 }
 
 func OpenDB(dbPath, walPath string, walSizeLimit int64) (*Database, error) {
+	for _, path := range []string{dbPath, walPath} {
+		dir := filepath.Dir(path)
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return nil, fmt.Errorf("failed to create directory %s: %w", dir, err)
+		}
+	}
+
 	filedatabase, err := os.OpenFile(dbPath, os.O_CREATE|os.O_RDWR, 0644)
 
 	if err != nil {
-		return nil, errors.New("Failed to create a dbFile for database!")
+		return nil, fmt.Errorf("Failed to create a database file: %w", err)
 	}
+
+	defer func() {
+		if err != nil {
+			filedatabase.Close()
+		}
+	}()
 
 	fileWal, err := os.OpenFile(walPath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0644)
 
 	if err != nil {
 		filedatabase.Close()
-		return nil, errors.New("Failed to create a walFile for database")
+		return nil, fmt.Errorf("Failed to create a wal file: %w", err)
 	}
 
 	db := Database{
