@@ -1,9 +1,10 @@
-package main
+package database
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	database2 "golangdb/database"
 )
 
 /*
@@ -11,10 +12,10 @@ import (
 */
 
 type DB struct {
-	database *Database
+	database *database2.Database
 }
 
-func NewDB(storage *Database) *DB {
+func NewDB(storage *database2.Database) *DB {
 	return &DB{database: storage}
 }
 

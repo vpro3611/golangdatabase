@@ -1,6 +1,7 @@
-package main
+package db_test
 
 import (
+	"golangdb/database"
 	"path/filepath"
 	"testing"
 )
@@ -11,7 +12,7 @@ func TestSetGet(t *testing.T) {
 	dbPath := filepath.Join(dir, "db.data")
 	walPath := filepath.Join(dir, "db.wal")
 
-	db, err := OpenDB(dbPath, walPath, walSizeLimit)
+	db, err := database.OpenDB(dbPath, walPath, database.WalSizeLimit)
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}
@@ -37,7 +38,7 @@ func TestDelete(t *testing.T) {
 	dbPath := filepath.Join(dir, "db.data")
 	walPath := filepath.Join(dir, "db.wal")
 
-	db, err := OpenDB(dbPath, walPath, walSizeLimit)
+	db, err := database.OpenDB(dbPath, walPath, database.WalSizeLimit)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +59,7 @@ func TestRecovery(t *testing.T) {
 	walPath := filepath.Join(dir, "db.wal")
 
 	{
-		db, err := OpenDB(dbPath, walPath, walSizeLimit)
+		db, err := database.OpenDB(dbPath, walPath, database.WalSizeLimit)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -68,7 +69,7 @@ func TestRecovery(t *testing.T) {
 	}
 
 	{
-		db, err := OpenDB(dbPath, walPath, walSizeLimit)
+		db, err := database.OpenDB(dbPath, walPath, database.WalSizeLimit)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -91,7 +92,7 @@ func TestOverwrite(t *testing.T) {
 	dbPath := filepath.Join(dir, "db.data")
 	walPath := filepath.Join(dir, "db.wal")
 
-	db, _ := OpenDB(dbPath, walPath, walSizeLimit)
+	db, _ := database.OpenDB(dbPath, walPath, database.WalSizeLimit)
 	defer db.Close()
 
 	db.Set("key", []byte("v1"))
@@ -108,7 +109,7 @@ func TestScanPrefix(t *testing.T) {
 	dbPath := filepath.Join(dir, "db.data")
 	walPath := filepath.Join(dir, "db.wal")
 
-	db, _ := OpenDB(dbPath, walPath, walSizeLimit)
+	db, _ := database.OpenDB(dbPath, walPath, database.WalSizeLimit)
 	defer db.Close()
 
 	db.Set("user:1", []byte("a"))

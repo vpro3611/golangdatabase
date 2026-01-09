@@ -1,7 +1,8 @@
-package main
+package db_test
 
 import (
 	"encoding/json"
+	"golangdb/database"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -12,13 +13,13 @@ func TestInsertExec(t *testing.T) {
 	dbPath := filepath.Join(dir, "db.data")
 	walPath := filepath.Join(dir, "db.wal")
 
-	storage, err := OpenDB(dbPath, walPath, walSizeLimit)
+	storage, err := database.OpenDB(dbPath, walPath, database.WalSizeLimit)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer storage.Close()
 
-	db := NewDB(storage)
+	db := database.NewDB(storage)
 
 	err = db.Insert().
 		Table("users").
@@ -47,13 +48,13 @@ func TestSelectAll(t *testing.T) {
 	dbPath := filepath.Join(dir, "db.data")
 	walPath := filepath.Join(dir, "db.wal")
 
-	storage, err := OpenDB(dbPath, walPath, walSizeLimit)
+	storage, err := database.OpenDB(dbPath, walPath, database.WalSizeLimit)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer storage.Close()
 
-	db := NewDB(storage)
+	db := database.NewDB(storage)
 
 	db.Insert().
 		Table("users").
@@ -89,10 +90,10 @@ func TestSelectWhere(t *testing.T) {
 	dbPath := filepath.Join(dir, "db.data")
 	walPath := filepath.Join(dir, "db.wal")
 
-	storage, _ := OpenDB(dbPath, walPath, walSizeLimit)
+	storage, _ := database.OpenDB(dbPath, walPath, database.WalSizeLimit)
 	defer storage.Close()
 
-	db := NewDB(storage)
+	db := database.NewDB(storage)
 
 	db.Insert().Table("users").Values(map[string]any{
 		"id": "1", "age": 20,
@@ -121,13 +122,13 @@ func TestDeleteWhere(t *testing.T) {
 	dbPath := filepath.Join(dir, "db.data")
 	walPath := filepath.Join(dir, "db.wal")
 
-	storage, err := OpenDB(dbPath, walPath, walSizeLimit)
+	storage, err := database.OpenDB(dbPath, walPath, database.WalSizeLimit)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer storage.Close()
 
-	db := NewDB(storage)
+	db := database.NewDB(storage)
 
 	db.Insert().Table("users").Values(map[string]any{
 		"id": "1", "age": 20,
@@ -157,13 +158,13 @@ func TestInsertAutoIncrement(t *testing.T) {
 	dbPath := filepath.Join(dir, "db.data")
 	walPath := filepath.Join(dir, "db.wal")
 
-	storage, err := OpenDB(dbPath, walPath, walSizeLimit)
+	storage, err := database.OpenDB(dbPath, walPath, database.WalSizeLimit)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer storage.Close()
 
-	db := NewDB(storage)
+	db := database.NewDB(storage)
 
 	// insert без id
 	err = db.Insert().
