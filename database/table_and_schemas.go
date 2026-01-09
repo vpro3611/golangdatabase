@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	database2 "golangdb/database"
+	"golangdb/errors_consts"
 )
 
 /*
@@ -12,11 +12,11 @@ import (
 */
 
 type DB struct {
-	database *database2.Database
+	Database *Database
 }
 
-func NewDB(storage *database2.Database) *DB {
-	return &DB{database: storage}
+func NewDB(storage *Database) *DB {
+	return &DB{Database: storage}
 }
 
 /*
@@ -82,9 +82,9 @@ func (q *InsertQuery) Values(values map[string]any) *InsertQuery {
 func (q *InsertQuery) nextID() (int64, error) {
 	metaKey := "__Meta__:" + q.table + ":next_id"
 
-	raw, ok := q.db.database.Get(metaKey)
+	raw, ok := q.db.Database.Get(metaKey)
 	if !ok {
-		if err := q.db.database.Set(metaKey, mustJson(int64(2))); err != nil {
+		if err := q.db.Database.Set(metaKey, mustJson(int64(2))); err != nil {
 			return 0, nil
 		}
 		return 1, nil
@@ -96,44 +96,105 @@ func (q *InsertQuery) nextID() (int64, error) {
 		return 0, err
 	}
 
-	if err := q.db.database.Set(metaKey, mustJson(next+1)); err != nil {
+	if err := q.db.Database.Set(metaKey, mustJson(next+1)); err != nil {
 		return 0, err
 	}
 	return next, nil
 }
 
 func (q *InsertQuery) Exec() error {
+	_, err := q.ExecAndReturnID()
+	if err != nil {
+		return err
+	}
+	return nil
+	//if q.table == "" {
+	//	return errors_consts.ErrEmptyName
+	//}
+	//if len(q.values) == 0 {
+	//	return errors_consts.ErrEmptyValues
+	//}
+	//
+	//idRaw, ok := q.values["id"]
+	//if !ok {
+	//	id, err := q.nextID()
+	//	if err != nil {
+	//		return err
+	//	}
+	//	idRaw = id
+	//	q.values["id"] = idRaw
+	//}
+	//
+	//// validate values
+	//for k, v := range q.values {
+	//	if !isAllowedValue(v) {
+	//		return fmt.Errorf("unsupported value type for field %s", k)
+	//	}
+	//}
+	//
+	//data, err := json.Marshal(q.values)
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//key := q.table + ":" + fmt.Sprint(idRaw)
+	//return q.db.database.Set(key, data)
+}
+
+func (q *InsertQuery) ExecAndReturnID() (int64, error) {
 	if q.table == "" {
-		return fmt.Errorf("table name is not set")
+		return 0, errors_consts.ErrEmptyName
 	}
 	if len(q.values) == 0 {
-		return fmt.Errorf("values are empty")
+		return 0, errors_consts.ErrEmptyValues
 	}
 
-	idRaw, ok := q.values["id"]
-	if !ok {
+	var id int64
+
+	if raw, ok := q.values["id"]; ok {
+		switch v := raw.(type) {
+		case int:
+			id = int64(v)
+		case int64:
+			id = v
+		case json.Number:
+			n, err := v.Int64()
+			if err != nil {
+				return 0, err
+			}
+			id = n
+		case float64:
+			id = int64(v)
+		default:
+			return 0, fmt.Errorf("unsupported id type %T", raw)
+		}
+	} else {
+		var err error
 		id, err := q.nextID()
 		if err != nil {
-			return err
+			return 0, err
 		}
-		idRaw = id
-		q.values["id"] = idRaw
+		q.values["id"] = id
 	}
 
-	// validate values
 	for k, v := range q.values {
 		if !isAllowedValue(v) {
-			return fmt.Errorf("unsupported value type for field %s", k)
+			return 0, fmt.Errorf("unsupported value type for field %s", k)
 		}
 	}
 
 	data, err := json.Marshal(q.values)
+
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	key := q.table + ":" + fmt.Sprint(idRaw)
-	return q.db.database.Set(key, data)
+	key := q.table + ":" + fmt.Sprint(id)
+	if err := q.db.Database.Set(key, data); err != nil {
+		return 0, err
+	}
+
+	return id, nil
 }
 
 /*
@@ -165,10 +226,10 @@ func (s *SelectQuery) Where(field, op string, value any) *SelectQuery {
 
 func (s *SelectQuery) All() ([]map[string]any, error) {
 	if s.table == "" {
-		return nil, fmt.Errorf("table name is not set")
+		return nil, errors_consts.ErrEmptyName
 	}
 
-	raw := s.db.database.ScanPrefix(s.table + ":")
+	raw := s.db.Database.ScanPrefix(s.table + ":")
 	out := make([]map[string]any, 0, len(raw))
 
 	for _, data := range raw {
@@ -218,15 +279,16 @@ func (d *DeleteQuery) Where(field, op string, value any) *DeleteQuery {
 
 func (d *DeleteQuery) Exec() error {
 	if d.table == "" {
-		return fmt.Errorf("table name is not set")
+		return errors_consts.ErrEmptyName
 	}
 
 	prefix := d.table + ":"
-	raw := d.db.database.ScanPrefix(prefix)
+	raw := d.db.Database.ScanPrefix(prefix)
 
 	for key, data := range raw {
 		if d.where == nil {
-			if err := d.db.database.Delete(key); err != nil {
+			// this DELETES all the table!
+			if err := d.db.Database.Delete(key); err != nil {
 				return err
 			}
 			continue
@@ -242,7 +304,7 @@ func (d *DeleteQuery) Exec() error {
 		}
 
 		if d.where.match(row) {
-			if err := d.db.database.Delete(key); err != nil {
+			if err := d.db.Database.Delete(key); err != nil {
 				return err
 			}
 		}
@@ -252,7 +314,7 @@ func (d *DeleteQuery) Exec() error {
 
 //func m() {
 //
-//	db, err := OpenDB(databasePath, walPath, walSizeLimit)
+//	db, err := OpenDB(databasePath, WalPath, walSizeLimit)
 //	if err != nil {
 //		log.Fatal(err)
 //	}
