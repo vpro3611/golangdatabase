@@ -33,12 +33,14 @@ type SelectQuery struct {
 	db    *DB
 	table string
 	where *WhereClause
+	err   error
 }
 
 type DeleteQuery struct {
 	db    *DB
 	table string
 	where *WhereClause
+	err   error
 }
 
 type WhereClause struct {
@@ -210,10 +212,12 @@ func (s *SelectQuery) Where(field, op string, value any) *SelectQuery {
 	switch op {
 	case "=", "!=", "<", ">":
 	default:
-		panic("unsupported operator")
+		s.err = fmt.Errorf("unsupported operator %s", op)
+		return s
 	}
 	if !isAllowedValue(value) {
-		panic("unsupported where value type")
+		s.err = fmt.Errorf("unsupported where value type %T", value)
+		return s
 	}
 
 	s.where = &WhereClause{
@@ -225,6 +229,10 @@ func (s *SelectQuery) Where(field, op string, value any) *SelectQuery {
 }
 
 func (s *SelectQuery) All() ([]map[string]any, error) {
+	if s.err != nil {
+		return nil, s.err
+	}
+
 	if s.table == "" {
 		return nil, errors_consts.ErrEmptyName
 	}
@@ -263,10 +271,12 @@ func (d *DeleteQuery) Where(field, op string, value any) *DeleteQuery {
 	switch op {
 	case "=", "!=", "<", ">":
 	default:
-		panic("unsupported operator")
+		d.err = fmt.Errorf("unsupported operator %s", op)
+		return d
 	}
 	if !isAllowedValue(value) {
-		panic("unsupported where value type")
+		d.err = fmt.Errorf("unsupported where value type %T", value)
+		return d
 	}
 
 	d.where = &WhereClause{
@@ -278,6 +288,10 @@ func (d *DeleteQuery) Where(field, op string, value any) *DeleteQuery {
 }
 
 func (d *DeleteQuery) Exec() error {
+	if d.err != nil {
+		return d.err
+	}
+
 	if d.table == "" {
 		return errors_consts.ErrEmptyName
 	}
@@ -311,12 +325,3 @@ func (d *DeleteQuery) Exec() error {
 	}
 	return nil
 }
-
-//func m() {
-//
-//	db, err := OpenDB(databasePath, WalPath, walSizeLimit)
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//	_ = NewDB(db)
-//}
